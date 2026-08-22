@@ -30,7 +30,7 @@ switch ($Task) {
         docker compose logs -f --tail=100
     }
     "platform-check" {
-        docker compose run --rm spark --packages $sparkPackages jobs/verify_lakehouse.py
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/verify_lakehouse.py
     }
     "test" {
         python -m pytest

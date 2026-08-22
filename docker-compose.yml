@@ -69,7 +69,8 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-replace-with-a-local-password}
       MINIO_BUCKET: ${MINIO_BUCKET:-flight-lakehouse}
     entrypoint: ["/bin/sh", "-ec"]
-    command: |
+    command:
+    - |
       cat > /etc/trino/catalog/iceberg.properties <<EOF
       connector.name=iceberg
       iceberg.catalog.type=jdbc
