@@ -44,6 +44,7 @@ def create_spark_session() -> SparkSession:
         )
         .config(f"spark.sql.catalog.{catalog}.s3.path-style-access", "true")
         .config("spark.sql.defaultCatalog", catalog)
+        .config("spark.sql.session.timeZone", "UTC")
         .config(f"spark.sql.catalog.{catalog}.client.region", "us-east-1")
     )
     return builder.getOrCreate()

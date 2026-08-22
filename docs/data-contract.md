@@ -72,8 +72,11 @@ If `flight.iata`, `departure.iata`, or `departure.scheduled` is missing, the rec
 | `flight_iata` | string | `flight.iata`, normalized to upper case. |
 | `flight_status` | string | `flight_status`, normalized to lower case. |
 | `airline_iata` | string | `airline.iata`, normalized to upper case. |
+| `airline_name` | string | `airline.name`, retained for the Gold airline dimension. |
 | `departure_airport_iata` | string | `departure.iata`, normalized to upper case. |
+| `departure_airport_name` | string | `departure.airport`, retained for the Gold airport dimension. |
 | `arrival_airport_iata` | string | `arrival.iata`, normalized to upper case. |
+| `arrival_airport_name` | string | `arrival.airport`, retained for the Gold airport dimension. |
 | `scheduled_departure_at` | timestamp | Parsed from `departure.scheduled`, in UTC. |
 | `actual_departure_at` | timestamp | Parsed from `departure.actual`, in UTC; nullable. |
 | `scheduled_arrival_at` | timestamp | Parsed from `arrival.scheduled`, in UTC. |

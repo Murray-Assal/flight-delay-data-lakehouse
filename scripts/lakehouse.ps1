@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory = $true, Position = 0)]
-    [ValidateSet("configure", "up", "down", "logs", "platform-check", "test")]
+    [ValidateSet("configure", "up", "down", "logs", "platform-check", "bronze-fixture", "bronze-v2-fixture", "bronze-late-fixture", "bronze-dimension-fixture", "silver", "gold", "test")]
     [string]$Task
 )
 
@@ -31,6 +31,24 @@ switch ($Task) {
     }
     "platform-check" {
         docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/verify_lakehouse.py
+    }
+    "bronze-fixture" {
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/ingest_bronze.py --fixture data/fixtures/aviationstack/flights_v1.json
+    }
+    "bronze-v2-fixture" {
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/ingest_bronze.py --fixture data/fixtures/aviationstack/flights_v2_schema_addition.json
+    }
+    "bronze-late-fixture" {
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/ingest_bronze.py --fixture data/fixtures/aviationstack/flights_late_correction.json
+    }
+    "bronze-dimension-fixture" {
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/ingest_bronze.py --fixture data/fixtures/aviationstack/flights_dimension_change.json
+    }
+    "silver" {
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/bronze_to_silver.py
+    }
+    "gold" {
+        docker compose run --rm spark --conf spark.jars.ivy=/tmp/.ivy2 --packages $sparkPackages jobs/silver_to_gold.py
     }
     "test" {
         python -m pytest

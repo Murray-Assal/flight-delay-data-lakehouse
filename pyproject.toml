@@ -7,7 +7,7 @@ name = "flight-delay-lakehouse"
 version = "0.1.0"
 description = "A local Apache Iceberg lakehouse for flight delay analytics."
 readme = "readme.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.10,<3.14"
 dependencies = []
 
 [project.optional-dependencies]

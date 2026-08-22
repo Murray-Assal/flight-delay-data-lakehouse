@@ -4,7 +4,7 @@
 
 ## Project status
 
-**Planning — not yet implemented.** This README is the build checklist and will be updated with runnable commands, screenshots, and results as each milestone is completed.
+**Implemented through the Gold layer.** The local stack, Bronze ingestion, Silver transformation, Iceberg schema evolution/time travel, Gold aggregates, and SCD Type 2 dimensions are runnable. Metabase dashboard creation remains a local manual setup step.
 
 ## Why this project?
 
@@ -113,50 +113,50 @@ Work is deliberately ordered so that the data pipeline works before additional p
 ### Milestone 1 — local platform
 
 - [x] Create `docker-compose.yml`.
-- [ ] Start MinIO, PostgreSQL, Spark, Trino, and Metabase locally.
+- [x] Start MinIO, PostgreSQL, Spark, Trino, and Metabase locally.
 - [x] Configure Spark and Trino to use an Iceberg catalog with MinIO as object storage.
 - [x] Add a `Makefile` or equivalent task runner for `up`, `down`, and `test`.
-- [ ] Confirm a sample Iceberg table can be created and queried through Trino.
+- [x] Confirm a sample Iceberg table can be created and queried through Trino.
 
 **Done when:** a new developer can start the full local stack with one documented command and query a sample Iceberg table.
 
 ### Milestone 2 — Bronze ingestion
 
-- [ ] Implement a Python API client with timeouts, retries, structured logging, and API-key configuration.
-- [ ] Write each response as a uniquely named JSON object in MinIO, partitioned by ingestion date and endpoint.
-- [ ] Append a manifest record containing request parameters, object path, ingestion time, HTTP status, and payload hash.
-- [ ] Make the command safe to rerun without overwriting raw data.
-- [ ] Add fixture-based tests that do not call the API.
+- [x] Implement a Python API client with timeouts, retries, structured logging, and API-key configuration.
+- [x] Write each response as a uniquely named JSON object in MinIO, partitioned by ingestion date and endpoint.
+- [x] Append a manifest record containing request parameters, object path, ingestion time, HTTP status, and payload hash.
+- [x] Make the command safe to rerun without overwriting raw data.
+- [x] Add fixture-based tests that do not call the API.
 
 **Done when:** the raw source response can be traced from its manifest record to a MinIO object.
 
 ### Milestone 3 — Silver transformation
 
-- [ ] Parse Bronze JSON into a typed Iceberg `silver_flights` table.
-- [ ] Standardize timestamps in UTC and cast numeric fields.
-- [ ] Flag invalid records instead of silently discarding them.
-- [ ] Deduplicate by `flight_instance_key`, retaining the newest valid source update.
-- [ ] Reprocess a rolling 48-hour lookback window to capture late-arriving data.
-- [ ] Prove idempotency: running the job twice produces the same Silver result.
+- [x] Parse Bronze JSON into a typed Iceberg `silver_flights` table.
+- [x] Standardize timestamps in UTC and cast numeric fields.
+- [x] Flag invalid records instead of silently discarding them.
+- [x] Deduplicate by `flight_instance_key`, retaining the newest valid source update.
+- [x] Reprocess a rolling 48-hour lookback window to capture late-arriving data.
+- [x] Prove idempotency: running the job twice produces the same Silver result.
 
 **Done when:** Silver contains clean, traceable, deduplicated data and automated tests cover duplicate and late records.
 
 ### Milestone 4 — lakehouse capabilities
 
-- [ ] Add a version-two fixture with a new additive field, such as `aircraft_type`.
-- [ ] Evolve the Iceberg table schema and backfill or default the new field safely.
-- [ ] Add a late correction fixture for an existing flight instance.
-- [ ] Record the Iceberg snapshot before the correction.
-- [ ] Query the table both before and after that snapshot, saving the commands and outputs in documentation.
+- [x] Add a version-two fixture with a new additive field, such as `aircraft_type`.
+- [x] Evolve the Iceberg table schema and backfill or default the new field safely.
+- [x] Add a late correction fixture for an existing flight instance.
+- [x] Record the Iceberg snapshot before the correction.
+- [x] Query the table both before and after that snapshot, saving the commands and outputs in documentation.
 
 **Done when:** the repository demonstrates schema evolution and time travel with repeatable scripts or tests, not just prose.
 
 ### Milestone 5 — Gold modelling
 
-- [ ] Build `fact_flight_delay` and hourly aggregate tables.
-- [ ] Implement SCD Type 2 merges for airport and airline dimensions.
-- [ ] Add data-quality checks: non-null business key, non-negative delays, one current dimension row per natural key, and valid effective-date ranges.
-- [ ] Validate aggregate counts against Silver data.
+- [x] Build `fact_flight_delay` and hourly aggregate tables.
+- [x] Implement SCD Type 2 merges for airport and airline dimensions.
+- [x] Add data-quality checks: non-null business key, non-negative delays, one current dimension row per natural key, and valid effective-date ranges.
+- [x] Validate aggregate counts against Silver data.
 
 **Done when:** Gold answers the business question and preserves dimension history correctly.
 
@@ -225,11 +225,17 @@ Copy the local configuration, replace its placeholders, and then start the platf
 .\scripts\lakehouse.ps1 up
 ```
 
-Once the services are healthy, run the first Iceberg smoke test:
+Once the services are healthy, run the Iceberg smoke test and the deterministic local pipeline:
 
 ```powershell
 .\scripts\lakehouse.ps1 platform-check
+.\scripts\lakehouse.ps1 bronze-fixture
+.\scripts\lakehouse.ps1 silver
+.\scripts\lakehouse.ps1 gold
+.\scripts\lakehouse.ps1 test
 ```
+
+For the schema-evolution, time-travel, and SCD Type 2 walkthrough, see [docs/demo-runbook.md](docs/demo-runbook.md).
 
 Useful local URLs: MinIO Console at `http://localhost:9001`, Trino at `http://localhost:8080`, and Metabase at `http://localhost:3000`.
 

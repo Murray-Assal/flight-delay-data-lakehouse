@@ -140,8 +140,14 @@ services:
       ICEBERG_CATALOG_URI: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-iceberg_catalog}
       ICEBERG_WAREHOUSE: s3://${MINIO_BUCKET:-flight-lakehouse}/warehouse
       MINIO_ENDPOINT: http://minio:9000
+      AVIATIONSTACK_API_KEY: ${AVIATIONSTACK_API_KEY:-}
+      AVIATIONSTACK_BASE_URL: ${AVIATIONSTACK_BASE_URL:-http://api.aviationstack.com/v1}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      PYTHONPATH: /opt/flight-lakehouse/src
     volumes:
       - ./jobs:/opt/flight-lakehouse/jobs:ro
+      - ./src:/opt/flight-lakehouse/src:ro
+      - ./data:/opt/flight-lakehouse/data:ro
     working_dir: /opt/flight-lakehouse
     entrypoint: ["/opt/spark/bin/spark-submit"]
 

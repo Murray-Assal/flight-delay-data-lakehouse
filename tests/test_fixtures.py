@@ -44,3 +44,14 @@ def test_late_correction_has_same_business_key_and_new_delay() -> None:
     assert correction["departure"]["iata"] == baseline["departure"]["iata"]
     assert correction["departure"]["scheduled"] == baseline["departure"]["scheduled"]
     assert correction["arrival"]["delay"] > baseline["arrival"]["delay"]
+
+
+def test_dimension_change_keeps_natural_keys_and_changes_tracked_labels() -> None:
+    baseline = flight_record("flights_late_correction.json")
+    changed = flight_record("flights_dimension_change.json")
+
+    assert changed["flight"]["iata"] == baseline["flight"]["iata"]
+    assert changed["airline"]["iata"] == baseline["airline"]["iata"]
+    assert changed["airline"]["name"] != baseline["airline"]["name"]
+    assert changed["departure"]["iata"] == baseline["departure"]["iata"]
+    assert changed["departure"]["airport"] != baseline["departure"]["airport"]
