@@ -85,7 +85,7 @@ OpenSky is intentionally not the primary source because it provides aircraft-tra
 
 ### Core data model
 
-The Silver pipeline will create a stable `flight_instance_key` from the flight number, departure airport, and scheduled departure timestamp. It will retain `raw_payload`, `source_file`, `ingested_at`, `source_updated_at`, and `payload_hash` for traceability.
+The Silver pipeline will create a stable `flight_instance_key` from the flight number, departure airport, and scheduled departure timestamp. It will retain `source_file`, `observed_at`, and `payload_sha256` for traceability.
 
 Gold will include:
 
@@ -102,20 +102,20 @@ Work is deliberately ordered so that the data pipeline works before additional p
 ### Milestone 0 — define the contract
 
 - [ ] Register for Aviationstack and store the API key only in a local `.env` file.
-- [ ] Add `.env.example` with the required variable names but no secrets.
+- [x] Add `.env.example` with the required variable names but no secrets.
 - [ ] Choose a small initial set of airports or airlines.
-- [ ] Capture representative API responses as sanitized fixtures.
-- [ ] Create `docs/data-contract.md` describing fields, data types, business keys, and quality rules.
-- [ ] Create architecture and decision records in `docs/`.
+- [x] Capture representative API responses as sanitized fixtures.
+- [x] Create `docs/data-contract.md` describing fields, data types, business keys, and quality rules.
+- [x] Create architecture and decision records in `docs/`.
 
 **Done when:** the source payload, delay calculation, table schemas, and acceptance criteria are written down.
 
 ### Milestone 1 — local platform
 
-- [ ] Create `docker-compose.yml`.
+- [x] Create `docker-compose.yml`.
 - [ ] Start MinIO, PostgreSQL, Spark, Trino, and Metabase locally.
-- [ ] Configure Spark and Trino to use an Iceberg catalog with MinIO as object storage.
-- [ ] Add a `Makefile` or equivalent task runner for `up`, `down`, and `test`.
+- [x] Configure Spark and Trino to use an Iceberg catalog with MinIO as object storage.
+- [x] Add a `Makefile` or equivalent task runner for `up`, `down`, and `test`.
 - [ ] Confirm a sample Iceberg table can be created and queried through Trino.
 
 **Done when:** a new developer can start the full local stack with one documented command and query a sample Iceberg table.
@@ -209,8 +209,29 @@ The API may not naturally change schema or deliver a convenient late correction 
 ├── tests/
 ├── data/fixtures/
 ├── docs/
+├── infra/
+├── jobs/
+├── scripts/
 └── dashboards/
 ```
+
+## Local commands (PowerShell)
+
+Copy the local configuration, replace its placeholders, and then start the platform:
+
+```powershell
+.\scripts\lakehouse.ps1 configure
+# Edit .env to replace local-password and API-key placeholders.
+.\scripts\lakehouse.ps1 up
+```
+
+Once the services are healthy, run the first Iceberg smoke test:
+
+```powershell
+.\scripts\lakehouse.ps1 platform-check
+```
+
+Useful local URLs: MinIO Console at `http://localhost:9001`, Trino at `http://localhost:8080`, and Metabase at `http://localhost:3000`.
 
 ## Quality and security rules
 
