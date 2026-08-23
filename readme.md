@@ -6,22 +6,21 @@
 
 **Implemented through the Gold layer.** The local stack, Bronze ingestion, Silver transformation, Iceberg schema evolution/time travel, Gold aggregates, and SCD Type 2 dimensions are runnable. The Metabase dashboard is connected to Trino and documents the Gold-layer metrics.
 
-## Why this project?
+## Project goals
 
-This project is designed to demonstrate practical data-engineering skills that are common in lakehouse roles:
+The project answers a practical analytics question from flight-status data while keeping the full data lifecycle reproducible on a local machine:
 
-- Medallion data modelling: Bronze, Silver, and Gold layers.
-- Apache Iceberg tables on object storage, including ACID transactions and time travel.
-- Schema evolution without breaking ingestion.
-- Late-arriving data processing and idempotent reruns.
-- Slowly changing dimensions (SCD Type 2).
-- Analytics consumption through Trino and Metabase.
+- Preserve each source response as an immutable Bronze record.
+- Produce a typed, deduplicated Silver view that handles late corrections.
+- Use Iceberg snapshots for schema evolution and time-travel queries.
+- Model Gold facts, hourly aggregates, and historical airport and airline dimensions.
+- Serve the curated data through Trino and a Metabase dashboard.
 
 ## Business question
 
 > Which airlines, airports, and hours of the day have the highest flight-delay rates?
 
-For this project, a delayed flight is one with `delay_minutes > 15`. The source fields and calculation will be recorded in the data contract before ingestion is built.
+For this project, a delayed flight is one with `delay_minutes > 15`. The source fields, quality rules, and calculation are documented in [docs/data-contract.md](docs/data-contract.md).
 
 ## Architecture and dependencies
 
@@ -128,91 +127,24 @@ flowchart LR
     I --> J[Metabase dashboard]
 ```
 
-## Build plan
+## Implementation status
 
-Work is deliberately ordered so that the data pipeline works before additional platform complexity is introduced.
+| Area | Status | What is implemented |
+|---|---|---|
+| Local platform | Complete | Docker Compose runs MinIO, PostgreSQL, Spark, Trino, and Metabase. |
+| Bronze | Complete | The ingestion client stores immutable Aviationstack JSON objects and an append-only manifest. |
+| Silver | Complete | Typed normalization, validation, deduplication, late-arriving corrections, and idempotent reruns. |
+| Iceberg capabilities | Complete | Additive schema evolution, snapshots, and repeatable time-travel queries. |
+| Gold | Complete | Flight-delay facts, hourly airport and airline aggregates, and SCD Type 2 airport and airline dimensions. |
+| Analytics | Complete | Metabase dashboard queries Gold tables through Trino. |
+| Scheduling | Deferred | Airflow remains an optional enhancement after the batch workflow. |
 
-### Milestone 0 — define the contract
+## Remaining improvements
 
-- [ ] Register for Aviationstack and store the API key only in a local `.env` file.
-- [x] Add `.env.example` with the required variable names but no secrets.
-- [ ] Choose a small initial set of airports or airlines.
-- [x] Capture representative API responses as sanitized fixtures.
-- [x] Create `docs/data-contract.md` describing fields, data types, business keys, and quality rules.
-- [x] Create architecture and decision records in `docs/`.
-
-**Done when:** the source payload, delay calculation, table schemas, and acceptance criteria are written down.
-
-### Milestone 1 — local platform
-
-- [x] Create `docker-compose.yml`.
-- [x] Start MinIO, PostgreSQL, Spark, Trino, and Metabase locally.
-- [x] Configure Spark and Trino to use an Iceberg catalog with MinIO as object storage.
-- [x] Add a `Makefile` or equivalent task runner for `up`, `down`, and `test`.
-- [x] Confirm a sample Iceberg table can be created and queried through Trino.
-
-**Done when:** a new developer can start the full local stack with one documented command and query a sample Iceberg table.
-
-### Milestone 2 — Bronze ingestion
-
-- [x] Implement a Python API client with timeouts, retries, structured logging, and API-key configuration.
-- [x] Write each response as a uniquely named JSON object in MinIO, partitioned by ingestion date and endpoint.
-- [x] Append a manifest record containing request parameters, object path, ingestion time, HTTP status, and payload hash.
-- [x] Make the command safe to rerun without overwriting raw data.
-- [x] Add fixture-based tests that do not call the API.
-
-**Done when:** the raw source response can be traced from its manifest record to a MinIO object.
-
-### Milestone 3 — Silver transformation
-
-- [x] Parse Bronze JSON into a typed Iceberg `silver_flights` table.
-- [x] Standardize timestamps in UTC and cast numeric fields.
-- [x] Flag invalid records instead of silently discarding them.
-- [x] Deduplicate by `flight_instance_key`, retaining the newest valid source update.
-- [x] Reprocess a rolling 48-hour lookback window to capture late-arriving data.
-- [x] Prove idempotency: running the job twice produces the same Silver result.
-
-**Done when:** Silver contains clean, traceable, deduplicated data and automated tests cover duplicate and late records.
-
-### Milestone 4 — lakehouse capabilities
-
-- [x] Add a version-two fixture with a new additive field, such as `aircraft_type`.
-- [x] Evolve the Iceberg table schema and backfill or default the new field safely.
-- [x] Add a late correction fixture for an existing flight instance.
-- [x] Record the Iceberg snapshot before the correction.
-- [x] Query the table both before and after that snapshot, saving the commands and outputs in documentation.
-
-**Done when:** the repository demonstrates schema evolution and time travel with repeatable scripts or tests, not just prose.
-
-### Milestone 5 — Gold modelling
-
-- [x] Build `fact_flight_delay` and hourly aggregate tables.
-- [x] Implement SCD Type 2 merges for airport and airline dimensions.
-- [x] Add data-quality checks: non-null business key, non-negative delays, one current dimension row per natural key, and valid effective-date ranges.
-- [x] Validate aggregate counts against Silver data.
-
-**Done when:** Gold answers the business question and preserves dimension history correctly.
-
-### Milestone 6 — analytics and orchestration
-
-- [x] Connect Metabase to Trino.
-- [x] Build a dashboard with delay rate by airport, airline, and hour.
-- [ ] Add dashboard filters and clear metric definitions.
-- [x] Add screenshots and a short walkthrough to this README.
-- [ ] Wrap the tested commands in an Airflow DAG as an optional final enhancement.
-
-**Done when:** a viewer can run the stack, open the dashboard, and understand the data lineage.
-
-### Milestone 7 — portfolio polish
-
-- [x] Add an architecture diagram and a data-lineage diagram.
-- [x] Add setup, run, test, and teardown commands.
-- [x] Add an end-to-end demo script.
-- [x] Run the demo from a clean checkout.
-- [x] Add a brief section explaining trade-offs and future improvements.
-- [x] Add concise CV-ready project bullets.
-
-**Done when:** the repository is understandable and demonstrable without an oral explanation.
+- Add dashboard filters for date, departure airport, and airline.
+- Add a short metric glossary directly in Metabase.
+- Schedule Bronze → Silver → Gold with Airflow or another orchestrator.
+- Add freshness checks, monitoring, and alerting for production-style operation.
 
 ## Advanced demonstrations
 
@@ -310,27 +242,17 @@ The native SQL for every dashboard card is in [sql/metabase/README.md](sql/metab
 - Log request metadata and failures without logging secrets.
 - Keep all timestamps in UTC in Bronze, Silver, and Gold.
 
-## Evidence to collect
+## Verification evidence
 
-The final repository should contain or link to:
+- The fixture-only demo runs the full pipeline from a clean checkout, including schema evolution, time travel, late corrections, and SCD Type 2 changes.
+- The offline test suite validates Bronze ingestion, fixtures, and Silver logic without using API quota.
+- The Metabase screenshot below shows a live sample queried from Gold through Trino.
+- The walkthrough in [docs/demo-runbook.md](docs/demo-runbook.md) records the repeatable Iceberg demonstrations.
 
-- A local architecture diagram.
-- A successful end-to-end run from clean setup to Metabase dashboard.
-- Automated test results.
-- A schema-evolution run and its resulting table schema.
-- A time-travel query showing a table before and after a late update.
-- [x] Dashboard screenshot and metric definitions in the SQL bundle.
-
-## Trade-offs and future improvements
+## Design trade-offs and next steps
 
 - **Batch first:** Spark batch jobs make the data flow repeatable and easy to demonstrate locally. Airflow is deliberately deferred until scheduling adds more value than complexity.
 - **Current-state Silver:** Silver keeps the latest valid flight observation for analytics while Bronze and Iceberg snapshots retain raw and historical evidence. A future extension could add a separate event-history table for every status change.
 - **Local-first infrastructure:** MinIO and Docker Compose keep cost and setup friction low. A production deployment would use managed object storage, secrets management, monitoring, alerting, and least-privilege service credentials.
 - **API limits:** Live Aviationstack calls are intentionally low frequency. Versioned fixtures make testing deterministic without consuming API quota.
 - **Next steps:** Add dashboard date/airline/airport filters, schedule the pipeline, introduce data freshness checks, and deploy the same Iceberg design to cloud object storage.
-
-## CV-ready project bullets
-
-- Built a containerized flight-delay lakehouse with Python, Apache Spark, Apache Iceberg, MinIO, PostgreSQL, Trino, and Metabase using a Bronze → Silver → Gold medallion architecture.
-- Implemented append-only raw ingestion, typed and idempotent Silver merges, late-arriving flight corrections, additive Iceberg schema evolution, time travel, and SCD Type 2 airport and airline dimensions.
-- Delivered Gold-layer hourly delay metrics and a Metabase dashboard; validated the pipeline with deterministic fixtures and a live sample covering 63 airlines, three departure airports, and nine departure hours.
