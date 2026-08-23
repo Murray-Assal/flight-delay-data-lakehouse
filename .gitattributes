@@ -1,0 +1,2 @@
+# Docker/Linux shell scripts must retain LF line endings.
+*.sh text eol=lf
