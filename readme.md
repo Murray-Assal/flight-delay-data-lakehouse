@@ -208,7 +208,7 @@ Work is deliberately ordered so that the data pipeline works before additional p
 - [x] Add an architecture diagram and a data-lineage diagram.
 - [x] Add setup, run, test, and teardown commands.
 - [x] Add an end-to-end demo script.
-- [ ] Run the demo from a clean checkout.
+- [x] Run the demo from a clean checkout.
 - [x] Add a brief section explaining trade-offs and future improvements.
 - [x] Add concise CV-ready project bullets.
 
