@@ -10,6 +10,11 @@ $taskRunner = Join-Path $PSScriptRoot "lakehouse.ps1"
 
 Set-Location $projectRoot
 
+# Isolate a clean-checkout run from any existing local lakehouse volumes.
+$demoProject = "flight-delay-lakehouse-demo-$PID"
+$env:COMPOSE_PROJECT_NAME = $demoProject
+Write-Host "Using isolated Docker Compose project: $demoProject"
+
 function Invoke-LakehouseTask {
     param([Parameter(Mandatory = $true)][string]$Task)
 

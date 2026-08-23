@@ -276,6 +276,12 @@ Run the full end-to-end fixture demonstration, including schema evolution, time 
 .\scripts\demo.ps1
 ```
 
+For a disposable clean-checkout validation, use `-StopAfterDemo`. After an existing local stack is stopped to free the host ports, the script assigns a unique Compose project name, so its containers and data volumes are separate from the regular lakehouse environment.
+
+```powershell
+.\scripts\demo.ps1 -StopAfterDemo
+```
+
 Stop containers while preserving the local data volumes:
 
 ```powershell
