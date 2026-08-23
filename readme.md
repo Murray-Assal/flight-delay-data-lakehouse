@@ -4,7 +4,7 @@
 
 ## Project status
 
-**Implemented through the Gold layer.** The local stack, Bronze ingestion, Silver transformation, Iceberg schema evolution/time travel, Gold aggregates, and SCD Type 2 dimensions are runnable. Metabase dashboard creation remains a local manual setup step.
+**Implemented through the Gold layer.** The local stack, Bronze ingestion, Silver transformation, Iceberg schema evolution/time travel, Gold aggregates, and SCD Type 2 dimensions are runnable. The Metabase dashboard is connected to Trino and documents the Gold-layer metrics.
 
 ## Why this project?
 
@@ -238,6 +238,15 @@ Once the services are healthy, run the Iceberg smoke test and the deterministic 
 For the schema-evolution, time-travel, and SCD Type 2 walkthrough, see [docs/demo-runbook.md](docs/demo-runbook.md).
 
 Useful local URLs: MinIO Console at `http://localhost:9001`, Trino at `http://localhost:8080`, and Metabase at `http://localhost:3000`.
+## Metabase dashboard
+
+The **Flight Delay Analytics** dashboard queries the Gold Iceberg aggregates through Trino. It contains total and delayed flight KPIs, overall delay rate, weighted average delay, comparisons by airline and departure airport, an hourly trend, and a Silver-level flight detail table.
+
+The dashboard shown below was refreshed from a live sample containing 114 delay facts, 63 airlines, three departure airports, and nine departure hours.
+
+![Flight Delay Analytics dashboard](docs/images/metabase-flight-delay-analytics.png)
+
+The native SQL for every dashboard card is in [sql/metabase/README.md](sql/metabase/README.md).
 
 ## Quality and security rules
 
@@ -256,7 +265,7 @@ The final repository should contain or link to:
 - Automated test results.
 - A schema-evolution run and its resulting table schema.
 - A time-travel query showing a table before and after a late update.
-- Dashboard screenshots and a metric glossary.
+- [x] Dashboard screenshot and metric definitions in the SQL bundle.
 
 ## CV-ready summary (draft)
 

@@ -77,7 +77,7 @@ Each changed dimension has one closed row and one current row. The Gold job vali
 
 ## Metabase
 
-The remaining manual step is to create a local Metabase administrator and add a Trino connection:
+To reproduce the configured Metabase dashboard, create a local administrator and add a Trino connection:
 
 - Host: `trino`
 - Port: `8080`
@@ -86,3 +86,5 @@ The remaining manual step is to create a local Metabase administrator and add a 
 - User: `lakehouse`
 
 Use `agg_delay_by_airline_hour` and `agg_delay_by_airport_hour` for the dashboard. Both tables expose `total_flights`, `delayed_flights`, `delay_rate`, and `average_delay_minutes` at an hourly UTC grain.
+
+Ready-to-copy native queries and visualization guidance are in [sql/metabase/](../sql/metabase/README.md). A completed dashboard example is shown in [the README](../readme.md#metabase-dashboard).
