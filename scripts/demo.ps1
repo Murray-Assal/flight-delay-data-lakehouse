@@ -14,6 +14,9 @@ function Invoke-LakehouseTask {
     param([Parameter(Mandatory = $true)][string]$Task)
 
     Write-Host "`n==> $Task"
+    # A PowerShell-only task such as ``configure`` does not set LASTEXITCODE.
+    # Reset it so a prior native command cannot make a successful task look failed.
+    $global:LASTEXITCODE = 0
     & $taskRunner $Task
     if ($LASTEXITCODE -ne 0) {
         throw "Lakehouse task failed: $Task"
