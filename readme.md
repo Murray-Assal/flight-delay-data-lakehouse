@@ -23,25 +23,40 @@ This project is designed to demonstrate practical data-engineering skills that a
 
 For this project, a delayed flight is one with `delay_minutes > 15`. The source fields and calculation will be recorded in the data contract before ingestion is built.
 
-## Architecture
+## Architecture and dependencies
 
-```text
-Aviationstack API
-       |
-       v
-Bronze ── raw, immutable JSON in MinIO + ingestion metadata
-       |
-       v
-Silver ── typed, deduplicated Iceberg flight events
-       |      + late-data correction + schema evolution
-       |
-       +── Iceberg SCD Type 2 airport and airline dimensions
-       |
-       v
-Gold   ── hourly delay metrics by airline and airport (Iceberg)
-       |
-       v
-Trino ──> Metabase dashboard
+```mermaid
+flowchart LR
+    API[Aviationstack API]
+    Spark[Apache Spark + Python jobs]
+    MinIO[MinIO / S3-compatible storage]
+    PG[(PostgreSQL)]
+    Trino[Trino]
+    Metabase[Metabase]
+
+    subgraph Iceberg[Apache Iceberg tables]
+        Bronze[Bronze: raw JSON + manifest]
+        Silver[Silver: typed current-state flights]
+        Gold[Gold: facts, SCD2 dimensions, hourly aggregates]
+    end
+
+    API -->|flight responses| Spark
+    Spark -->|S3FileIO writes| Bronze
+    Bronze -->|read, validate, deduplicate| Spark
+    Spark --> Silver
+    Silver -->|fact, SCD2, aggregate jobs| Spark
+    Spark --> Gold
+
+    Bronze -. data files .-> MinIO
+    Silver -. data files .-> MinIO
+    Gold -. data files .-> MinIO
+    Spark <-->|JDBC catalog metadata| PG
+    Trino <-->|JDBC catalog metadata| PG
+    Trino <-->|Iceberg data + metadata| MinIO
+    Gold --> Trino
+    Silver --> Trino
+    Trino -->|SQL dashboard queries| Metabase
+    Metabase <-->|application database| PG
 ```
 
 ### Technology choices
@@ -94,6 +109,24 @@ Gold will include:
 - `dim_airline_scd2` — airline history with the same SCD Type 2 fields.
 - `agg_delay_by_airport_hour` — total flights, delayed flights, and delay rate.
 - `agg_delay_by_airline_hour` — total flights, delayed flights, and delay rate.
+
+### Data lineage
+
+```mermaid
+flowchart LR
+    A[Aviationstack response] --> B[Bronze JSON object in MinIO]
+    A --> C[Bronze ingestion manifest]
+    B --> D[Silver normalization + quality checks]
+    C --> D
+    D --> E[silver_flights]
+    E --> F[fact_flight_delay]
+    E --> G[dim_airline_scd2 + dim_airport_scd2]
+    F --> H[Hourly delay aggregates]
+    H --> I[Trino]
+    G --> I
+    E --> I
+    I --> J[Metabase dashboard]
+```
 
 ## Build plan
 
@@ -162,22 +195,22 @@ Work is deliberately ordered so that the data pipeline works before additional p
 
 ### Milestone 6 — analytics and orchestration
 
-- [ ] Connect Metabase to Trino.
-- [ ] Build a dashboard with delay rate by airport, airline, and hour.
+- [x] Connect Metabase to Trino.
+- [x] Build a dashboard with delay rate by airport, airline, and hour.
 - [ ] Add dashboard filters and clear metric definitions.
-- [ ] Add screenshots and a short walkthrough to this README.
+- [x] Add screenshots and a short walkthrough to this README.
 - [ ] Wrap the tested commands in an Airflow DAG as an optional final enhancement.
 
 **Done when:** a viewer can run the stack, open the dashboard, and understand the data lineage.
 
 ### Milestone 7 — portfolio polish
 
-- [ ] Add an architecture diagram and a data-lineage diagram.
-- [ ] Add setup, run, test, and teardown commands.
-- [ ] Add an end-to-end demo script.
+- [x] Add an architecture diagram and a data-lineage diagram.
+- [x] Add setup, run, test, and teardown commands.
+- [x] Add an end-to-end demo script.
 - [ ] Run the demo from a clean checkout.
-- [ ] Add a brief section explaining trade-offs and future improvements.
-- [ ] Add concise CV-ready project bullets.
+- [x] Add a brief section explaining trade-offs and future improvements.
+- [x] Add concise CV-ready project bullets.
 
 **Done when:** the repository is understandable and demonstrable without an oral explanation.
 
@@ -193,51 +226,66 @@ The API may not naturally change schema or deliver a convenient late correction 
 | SCD Type 2 | Change an airport or airline attribute in a fixture and prove the prior row is closed while a new current row is created. |
 | Idempotency | Run each pipeline step twice and assert that row counts and current-state results remain unchanged. |
 
-## Planned repository layout
+## Repository layout
 
 ```text
 .
 ├── docker-compose.yml
 ├── .env.example
 ├── Makefile
-├── src/flight_lakehouse/
-│   ├── ingest.py
-│   ├── bronze_to_silver.py
-│   ├── silver_to_gold.py
-│   └── dimensions.py
-├── sql/
-├── tests/
-├── data/fixtures/
+├── data/fixtures/aviationstack/       # Sanitized fixture payloads
 ├── docs/
-├── infra/
+│   ├── adr/                           # Architecture decision record
+│   ├── demo-runbook.md
+│   └── images/                        # Dashboard evidence
 ├── jobs/
+│   ├── ingest_bronze.py
+│   ├── bronze_to_silver.py
+│   └── silver_to_gold.py
 ├── scripts/
-└── dashboards/
+│   ├── lakehouse.ps1                  # Task runner
+│   └── demo.ps1                       # End-to-end fixture demo
+├── sql/metabase/                      # Dashboard card queries
+├── src/flight_lakehouse/              # Bronze and Silver domain logic
+└── tests/                             # Offline contract and unit tests
 ```
 
-## Local commands (PowerShell)
+## Setup, run, test, and teardown (PowerShell)
 
-Copy the local configuration, replace its placeholders, and then start the platform:
+Create local configuration and start the stack. Fixture runs do not require an Aviationstack key; add one only for live ingestion.
 
 ```powershell
 .\scripts\lakehouse.ps1 configure
-# Edit .env to replace local-password and API-key placeholders.
+# Edit .env to choose local passwords and optionally add AVIATIONSTACK_API_KEY.
 .\scripts\lakehouse.ps1 up
+.\scripts\lakehouse.ps1 platform-check
 ```
 
-Once the services are healthy, run the Iceberg smoke test and the deterministic local pipeline:
+Run the deterministic fixture pipeline:
 
 ```powershell
-.\scripts\lakehouse.ps1 platform-check
 .\scripts\lakehouse.ps1 bronze-fixture
 .\scripts\lakehouse.ps1 silver
 .\scripts\lakehouse.ps1 gold
 .\scripts\lakehouse.ps1 test
 ```
 
-For the schema-evolution, time-travel, and SCD Type 2 walkthrough, see [docs/demo-runbook.md](docs/demo-runbook.md).
+Run the full end-to-end fixture demonstration, including schema evolution, time travel, a late correction, and SCD Type 2 changes:
 
-Useful local URLs: MinIO Console at `http://localhost:9001`, Trino at `http://localhost:8080`, and Metabase at `http://localhost:3000`.
+```powershell
+.\scripts\demo.ps1
+```
+
+Stop containers while preserving the local data volumes:
+
+```powershell
+.\scripts\lakehouse.ps1 down
+```
+
+To remove all local containers **and data volumes**, use `docker compose down -v`. This is destructive and cannot be undone.
+
+For the schema-evolution, time-travel, and SCD Type 2 walkthrough, see [docs/demo-runbook.md](docs/demo-runbook.md). Useful local URLs: MinIO Console at `http://localhost:9001`, Trino at `http://localhost:8080`, and Metabase at `http://localhost:3000`.
+
 ## Metabase dashboard
 
 The **Flight Delay Analytics** dashboard queries the Gold Iceberg aggregates through Trino. It contains total and delayed flight KPIs, overall delay rate, weighted average delay, comparisons by airline and departure airport, an hourly trend, and a Silver-level flight detail table.
@@ -267,6 +315,16 @@ The final repository should contain or link to:
 - A time-travel query showing a table before and after a late update.
 - [x] Dashboard screenshot and metric definitions in the SQL bundle.
 
-## CV-ready summary (draft)
+## Trade-offs and future improvements
 
-Built a containerized local flight-delay lakehouse using Python, Spark, Apache Iceberg, MinIO, Trino, and Metabase; implemented Bronze/Silver/Gold pipelines, idempotent late-data processing, Iceberg schema evolution and time travel, SCD Type 2 dimensions, and delay-rate analytics.
+- **Batch first:** Spark batch jobs make the data flow repeatable and easy to demonstrate locally. Airflow is deliberately deferred until scheduling adds more value than complexity.
+- **Current-state Silver:** Silver keeps the latest valid flight observation for analytics while Bronze and Iceberg snapshots retain raw and historical evidence. A future extension could add a separate event-history table for every status change.
+- **Local-first infrastructure:** MinIO and Docker Compose keep cost and setup friction low. A production deployment would use managed object storage, secrets management, monitoring, alerting, and least-privilege service credentials.
+- **API limits:** Live Aviationstack calls are intentionally low frequency. Versioned fixtures make testing deterministic without consuming API quota.
+- **Next steps:** Add dashboard date/airline/airport filters, schedule the pipeline, introduce data freshness checks, and deploy the same Iceberg design to cloud object storage.
+
+## CV-ready project bullets
+
+- Built a containerized flight-delay lakehouse with Python, Apache Spark, Apache Iceberg, MinIO, PostgreSQL, Trino, and Metabase using a Bronze → Silver → Gold medallion architecture.
+- Implemented append-only raw ingestion, typed and idempotent Silver merges, late-arriving flight corrections, additive Iceberg schema evolution, time travel, and SCD Type 2 airport and airline dimensions.
+- Delivered Gold-layer hourly delay metrics and a Metabase dashboard; validated the pipeline with deterministic fixtures and a live sample covering 63 airlines, three departure airports, and nine departure hours.
